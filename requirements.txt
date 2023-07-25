@@ -1,4 +1,6 @@
 aenum==3.1.15
 collection==0.1.6
+jsons==1.6.3
 numpy==1.25.1
 pygame==2.5.0
+typish==1.9.3
