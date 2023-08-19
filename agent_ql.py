@@ -5,16 +5,13 @@ from game import Direction, SnakeGame
 import json
 import os.path
 
-LS = 0.2
-GAMMA = 0.2
-
 class Agent:
 
-    def __init__(self):
+    def __init__(self, lr, gamma):
         self.epsilon = 0
-        self.gamma = GAMMA
-        self.ls = LS
-        self.fname = f'file_alfa{self.ls}_gamma{self.gamma}.json'
+        self.gamma = gamma
+        self.ls = lr
+        self.fname = 'file_ql_memory.json'
 
         if not os.path.isfile(self.fname):
             with open(self.fname, 'a') as f:
@@ -23,9 +20,7 @@ class Agent:
                 sample = {
                 'game_number' : 0,
                 'memory' : tableBetter,
-                'score' : [0],
-                'average' : [0],
-                'record' : 0
+                'score' : [0]
                 }
                 json_string = json.dumps(sample)
                 f.write(json_string)
@@ -179,8 +174,8 @@ class Agent:
         
         return np.array(state1, dtype=int), np.array(state2, dtype=int), np.array(state3, dtype=int)
 
-    def get_action(self, c1, c2, c3): #c stands for coordinate in memory
-        self.epsilon = 150 - self.memory['game_number']
+    def get_action(self, c1, c2, c3, training_games): #c stands for coordinate in memory
+        self.epsilon = training_games - self.memory['game_number']
         final_move = [0, 0, 0]
         if random.randint(0, 200) < self.epsilon: #random move
             move = random.randint(0, 2)
@@ -201,9 +196,9 @@ def find_index(vector):
 def binaryToDecimal(val): 
     return int(val, 2) 
 
-def train():
-    agent = Agent()
-    game = SnakeGame()
+def train(ls, gamma, training_games, speed):
+    agent = Agent(ls, gamma)
+    game = SnakeGame(speed)
     while True:
         #take state informations
         state_old = agent.get_state(game)
@@ -221,7 +216,7 @@ def train():
         #find best action and make decision 
         index_q = np.argmax(agent.memory['memory'][coordinate1][coordinate2][coordinate3])
         q = agent.memory['memory'][coordinate1][coordinate2][coordinate3][index_q]
-        finale_move = agent.get_action(coordinate1, coordinate2, coordinate3)
+        finale_move = agent.get_action(coordinate1, coordinate2, coordinate3, training_games)
 
         #make move
         game_over, score, reward = game.play_step(finale_move)
@@ -246,17 +241,10 @@ def train():
         #new_Q = q + agent.ls * (reward + agent.gamma * q_prim - q)
         #calculate newQ value
         agent.memory['memory'][coordinate1][coordinate2][coordinate3][index_q] = q + agent.ls * (reward + agent.gamma * q_prim - q)
-        with open(f'file_alfa{agent.ls}_gamma{agent.gamma}.json', 'w') as f:
+        with open('file_ql_memory.json', 'w') as f:
             json.dump(agent.memory, f)
 
         if game_over == True:
             game.reset()
             agent.memory['game_number'] = agent.memory['game_number'] + 1
             agent.memory['score'].append(score)
-
-            #loop to stop agent form playing
-            #if agent.memory['game_number'] > 300:
-            #    break
-    
-if __name__ == '__main__':
-    train()

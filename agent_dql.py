@@ -1,11 +1,9 @@
-from keras.layers import Dense, Activation, BatchNormalization, Dropout
-from keras.models import Sequential, load_model
+from keras.layers import Dense
+from keras.models import Sequential
 from keras.optimizers import Adam
 import numpy as np
 from game import Point
 from game import Direction, SnakeGame
-import json
-import os.path
 import random
 
 #some variables to create model
@@ -50,122 +48,36 @@ class ReplayBuffer(object):
 
         return states, actions, rewards, states_
 
-#below are 6 functions to build a model
+def build_dqn(lr, n_actions, input_dims, args):
 
-def build_dqn(lr, n_actions, input_dims, fc1_dims, fc2_dims):
-    model = Sequential([
-                Dense(fc1_dims, input_shape=(input_dims,)),
-                Activation('relu'),
-                Dense(fc2_dims),
-                Activation('relu'),
-                Dense(n_actions)])
+    model = Sequential()
+
+    for i in range(len(args)):
+        if i == 0:
+            model.add(Dense(args[i], input_shape=(input_dims,), activation = 'relu'))
+        else:
+            model.add(Dense(args[i], activation = 'relu'))
+
+    model.add(Dense(n_actions))
 
     model.compile(optimizer=Adam(lr=lr), loss='mse')
 
     return model
 
-#def build_dqn(lr, n_actions, input_dims, fc1_dims, fc2_dims):
-#    model = Sequential([
-#                Dense(fc1_dims, input_shape=(input_dims,)),
-#                Activation('relu'),
-#                Dense(fc2_dims),
-#                Activation('relu'),
-#                Dense(fc2_dims),
-#                Activation('relu'),
-#                Dense(n_actions)])
-#
-#    model.compile(optimizer=Adam(lr=lr), loss='mse')
-#
-#    return model
-
-#def build_dqn(lr, n_actions, input_dims, fc1_dims, fc2_dims):
-#    model = Sequential([
-#                Dense(fc1_dims, input_shape=(input_dims,)),
-#                BatchNormalization(),
-#                Activation('relu'),
-#                Dense(fc2_dims),
-#                BatchNormalization(),
-#                Activation('relu'),
-#                Dense(n_actions)])
-#
-#    model.compile(optimizer=Adam(lr=lr), loss='mse')
-#
-#    return model
-
-#def build_dqn(lr, n_actions, input_dims, fc1_dims, fc2_dims):
-#    model = Sequential([
-#                Dense(fc1_dims, input_shape=(input_dims,)),
-#                Dropout(0.2),
-#                Activation('relu'),
-#                Dense(fc2_dims),
-#                Dropout(0.2),
-#                Activation('relu'),
-#                Dense(n_actions)])
-#
-#    model.compile(optimizer=Adam(lr=lr), loss='mse')
-#
-#    return model
-
-#def build_dqn(lr, n_actions, input_dims, fc1_dims, fc2_dims):
-#    model = Sequential([
-#                Dense(fc1_dims, input_shape=(input_dims,)),
-#                BatchNormalization(),
-#                Activation('relu'),
-#                Dense(fc2_dims),
-#                BatchNormalization(),
-#                Activation('relu'),
-#                Dense(fc2_dims),
-#                BatchNormalization(),
-#                Activation('relu'),
-#                Dense(n_actions)])
-#
-#    model.compile(optimizer=Adam(lr=lr), loss='mse')
-#
-#    return model
-
-#def build_dqn(lr, n_actions, input_dims, fc1_dims, fc2_dims):
-#    model = Sequential([
-#                Dense(fc1_dims, input_shape=(input_dims,)),
-#                Dropout(0.2),
-#                Activation('relu'),
-#                Dense(fc2_dims),
-#                Dropout(0.2),
-#                Activation('relu'),
-#                Dense(fc2_dims),
-#                Dropout(0.2),
-#                Activation('relu'),
-#                Dense(n_actions)])
-#
-#    model.compile(optimizer=Adam(lr=lr), loss='mse')
-#
-#    return model
-
 class Agent:
     """
     This class creating a deep Q-learning agent
     """
-    def __init__(self, alpha, gamma, n_actions, batch_size,
-                 input_dims,mem_size=MEMORY_SIZE, fname=f'dqn_model.h5'):
+    def __init__(self, alpha, gamma, training_games, n_actions, batch_size,
+                 input_dims,mem_size, args):
         self.action_space = [i for i in range(n_actions)]
         self.gamma = gamma
+        self.training_games = training_games
         self.epsilon = 0
         self.batch_size = batch_size
-        self.model_file = fname
         self.memory = ReplayBuffer(mem_size, input_dims, n_actions)
-        self.q_eval = build_dqn(alpha, n_actions, input_dims, LAYER_SIZE, LAYER_SIZE)
-
-        if not os.path.isfile(FILE_NAME):
-            with open(FILE_NAME, 'a') as f:
-                sample = {
-                'game_number' : 0,
-                'score' : []
-                }
-                json_string = json.dumps(sample)
-                f.write(json_string)
-            self.score_memory = json.load(open(FILE_NAME))
-        elif os.path.isfile(FILE_NAME):
-            self.score_memory = json.load(open(FILE_NAME))
-
+        self.layer_size = args
+        self.q_eval = build_dqn(alpha, n_actions, input_dims, self.layer_size)
 
     def remember(self, state, action, reward, new_state):
         self.memory.store_transition(state, action, reward, new_state)
@@ -322,9 +234,9 @@ class Agent:
 
     def get_action(self, state):
         state = state[np.newaxis, :]
-        epsilon = GAME_EPSILON - self.score_memory['game_number']
+        epsilon = self.training_games - self.epsilon
         final_move = [0, 0, 0]
-        if random.randint(0, GAME_EPSILON) < epsilon:
+        if random.randint(0, self.training_games) < epsilon:
             move = random.randint(0, 2)
             final_move[move] = 1
         else:
@@ -352,14 +264,12 @@ class Agent:
 
             _ = self.q_eval.fit(state, q_target)
 
-    #def save_model(self):
-    #    save_path = 'C:\\Users\\Michał\\Desktop\\repo\\snake\\dql_models'
-    #    completeName = os.path.join(save_path, self.model_file)
-    #    self.q_eval.save(completeName)
+            self.epsilon += 1
 
-def train():
-    agent = Agent(LR, GAMMA, 3, BATCH_SIZE, INPUT_SHAPE)
-    game = SnakeGame()
+def train(speed, learning_rate, gamma, training_games, batch_size, input_shape, memory_size, *args):
+    layer_size = [i for i in args]
+    agent = Agent(learning_rate, gamma, training_games, 3, batch_size, input_shape, memory_size, layer_size)
+    game = SnakeGame(speed)
     while True:
         state_old = agent.get_state(game)
         final_move = agent.get_action(state_old)
@@ -369,20 +279,4 @@ def train():
 
         if game_over == True:
             agent.learn()
-            with open(FILE_NAME, 'w') as f:
-                json.dump(agent.score_memory, f)
-            #agent.save_model()
-            agent.score_memory['game_number'] += 1
-            agent.score_memory['score'].append(score)
             game.reset()
-            #if agent.score_memory['game_number'] > 300:
-            #    break
-
-if __name__ == '__main__':
-
-    train()
-
-#loop to train diffrent models
-#    for LAYER_SIZE in np.arange(65, 155, 15):
-#        train()
-#    

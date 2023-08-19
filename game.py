@@ -3,6 +3,7 @@ import sys, time, random, pygame
 from enum import Enum
 from collections import namedtuple
 import numpy as np
+import os
 
 pygame.init()
 font = pygame.font.SysFont('arial', 25)
@@ -26,9 +27,11 @@ BLOCK_SIZE = 20
 SPEED = 24
 
 class SnakeGame:
-    def __init__(self, w = 640, h = 480):
+    def __init__(self, speed, w = 640, h = 480, human = False):
         self.w = w
         self.h = h
+        self.human = human
+        self.speed = speed
         #init display
         self.display = pygame.display.set_mode((self.w, self.h))
         pygame.display.set_caption('SNAKE')
@@ -45,6 +48,11 @@ class SnakeGame:
         self.food = None
         self.kill_cooldown = 100
         self.place_food()
+
+    def quit_game(self):
+        #quit the game
+        pygame.quit()
+        quit()
     
     def place_food(self):
         x = random.randint(0, (self.w-BLOCK_SIZE)//BLOCK_SIZE) * BLOCK_SIZE
@@ -57,8 +65,23 @@ class SnakeGame:
         # 1. collect user inputs
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                if os.path.exists('file_ql_memory.json'):
+                    os.remove('file_ql_memory.json')
                 pygame.quit()
                 quit()
+            elif self.human == True:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_LEFT:
+                        self.direction = Direction.LEFT
+                    elif event.key == pygame.K_RIGHT:
+                        self.direction = Direction.RIGHT
+                    elif event.key == pygame.K_UP:
+                        self.direction = Direction.UP
+                    elif event.key == pygame.K_DOWN:
+                        self.direction = Direction.DOWN
+                    elif event.type == pygame.QUIT:
+                        pygame.quit()
+                        quit()
 
         # 2. move
         self.move(action)
@@ -84,7 +107,7 @@ class SnakeGame:
 
         # 5. update ui and clock
         self.update_ui()
-        self.clock.tick(SPEED)
+        self.clock.tick(self.speed)
 
         # 6. return game over, score and reward
         return game_over, self.score, reward
@@ -114,28 +137,41 @@ class SnakeGame:
         pygame.display.flip()
 
     def move(self, action):
-        clock_directions = [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP]
-        index = clock_directions.index(self.direction)
+        if self.human == False:
+            clock_directions = [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP]
+            index = clock_directions.index(self.direction)
 
-        if np.array_equal(action, [1, 0, 0]): #no change of direction
-            new_direction = clock_directions[index]
-        elif np.array_equal(action, [0, 1, 0]): #turn right
-            next_index = (index + 1) % 4
-            new_direction = clock_directions[next_index]
-        else:
-            next_index = (index - 1) % 4
-            new_direction = clock_directions[next_index]
+            if np.array_equal(action, [1, 0, 0]): #no change of direction
+                new_direction = clock_directions[index]
+            elif np.array_equal(action, [0, 1, 0]): #turn right
+                next_index = (index + 1) % 4
+                new_direction = clock_directions[next_index]
+            else:
+                next_index = (index - 1) % 4
+                new_direction = clock_directions[next_index]
 
-        self.direction = new_direction
-        x = self.head.x
-        y = self.head.y
-        if self.direction == Direction.RIGHT:
-            x += BLOCK_SIZE
-        elif self.direction == Direction.LEFT:
-            x -= BLOCK_SIZE
-        elif self.direction == Direction.DOWN:
-            y += BLOCK_SIZE
-        elif self.direction == Direction.UP:
-            y -= BLOCK_SIZE
+            self.direction = new_direction
+            x = self.head.x
+            y = self.head.y
+            if self.direction == Direction.RIGHT:
+                x += BLOCK_SIZE
+            elif self.direction == Direction.LEFT:
+                x -= BLOCK_SIZE
+            elif self.direction == Direction.DOWN:
+                y += BLOCK_SIZE
+            elif self.direction == Direction.UP:
+                y -= BLOCK_SIZE
 
+        elif self.human == True:
+            x = self.head.x
+            y = self.head.y
+            if action == Direction.RIGHT:
+                x += BLOCK_SIZE
+            elif action == Direction.LEFT:
+                x -= BLOCK_SIZE
+            elif action == Direction.DOWN:
+                y += BLOCK_SIZE
+            elif action == Direction.UP:
+                y -= BLOCK_SIZE
+        
         self.head = Point(x, y)
