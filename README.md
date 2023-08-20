@@ -45,6 +45,9 @@ python gui.py
 ## Controls
 
 At the beginning select 1 of 3 options in top left part of window. Then fill all filds that pops out and press START button. 
+
+If you selected 'Play game' you will control snake with arrows. 
+
 ## Screenshots
 Main window 
 ![](images/main_window.png)
