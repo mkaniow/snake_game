@@ -46,6 +46,14 @@ python gui.py
 
 At the beginning select 1 of 3 options in top left part of window. Then fill all filds that pops out and press START button. 
 ## Screenshots
-
-![App Screenshot](https://via.placeholder.com/468x300?text=App+Screenshot+Here)
+Main window 
+![](images/main_window.png)
+Play game view
+![](images/player_game.png)
+Create Q-learning window view
+![](images/ql_game.png)
+Create deep Q-learning window view
+![](images/dql_game.png)
+Snake game view
+![](images/gameplay.png)
 
